@@ -1,67 +1,121 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Cricket Game</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      background-color: #f4f4f4;
-      margin-top: 50px;
-    }
-    h1 {
-      color: #333;
-    }
-    #score {
-      font-size: 24px;
-      margin: 20px;
-    }
-    button {
-      font-size: 18px;
-      padding: 10px 20px;
-      background-color: green;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    button:disabled {
-      background-color: gray;
-      cursor: not-allowed;
-    }
-    #message {
-      font-size: 20px;
-      margin-top: 20px;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Swipe Snake Game</title>
+<style>
+  body { margin:0; background:#000; display:flex; justify-content:center; align-items:center; height:100vh; }
+  canvas { background:#111; display:block; }
+  #score { position:absolute; top:10px; left:50%; transform:translateX(-50%); color:white; font-family:sans-serif; font-size:20px; }
+</style>
 </head>
 <body>
+<div id="score">Score: 0</div>
+<canvas id="game" width="400" height="400"></canvas>
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
 
-  <h1>Cricket Game</h1>
-  <div id="score">Score: 0</div>
-  <button id="hitBtn">Hit Ball</button>
-  <div id="message"></div>
+const box = 20;
+let snake = [{x: 9 * box, y: 10 * box}];
+let food = spawnFood();
+let score = 0;
+let dir = null;
+let changingDir = false;
 
-  <script>
-    let score = 0;
-    const hitBtn = document.getElementById("hitBtn");
-    const scoreDisplay = document.getElementById("score");
-    const messageDisplay = document.getElementById("message");
+function spawnFood() {
+  return {
+    x: Math.floor(Math.random()* (canvas.width/box)) * box,
+    y: Math.floor(Math.random()* (canvas.height/box)) * box
+  };
+}
 
-    hitBtn.addEventListener("click", function() {
-      const outcomes = [1, 2, 3, 4, 6, "OUT"];
-      const result = outcomes[Math.floor(Math.random() * outcomes.length)];
+function draw() {
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      if (result === "OUT") {
-        messageDisplay.textContent = "You're OUT! Final Score: " + score;
-        hitBtn.disabled = true;
-      } else {
-        score += result;
-        scoreDisplay.textContent = "Score: " + score;
-        messageDisplay.textContent = "You hit " + result + " run(s)!";
-      }
-    });
-  </script>
+  for (let i = 0; i < snake.length; i++) {
+    ctx.fillStyle = i === 0 ? 'lime' : 'green';
+    ctx.fillRect(snake[i].x, snake[i].y, box, box);
+  }
 
+  ctx.fillStyle = 'red';
+  ctx.fillRect(food.x, food.y, box, box);
+
+  let head = {x: snake[0].x, y: snake[0].y};
+  if (dir === 'LEFT') head.x -= box;
+  if (dir === 'UP') head.y -= box;
+  if (dir === 'RIGHT') head.x += box;
+  if (dir === 'DOWN') head.y += box;
+
+  // Collision with wall
+  if (head.x < 0 || head.y < 0 || head.x >= canvas.width || head.y >= canvas.height) {
+    gameOver();
+    return;
+  }
+
+  // Collision with self
+  for (let segment of snake) {
+    if (head.x === segment.x && head.y === segment.y) {
+      gameOver();
+      return;
+    }
+  }
+
+  // Eat food
+  if (head.x === food.x && head.y === food.y) {
+    score++;
+    scoreEl.textContent = 'Score: ' + score;
+    food = spawnFood();
+  } else {
+    snake.pop();
+  }
+
+  snake.unshift(head);
+  changingDir = false;
+}
+
+function gameOver() {
+  alert('Game Over! Final Score: ' + score);
+  document.location.reload();
+}
+
+let game = setInterval(draw, 100);
+
+// Swipe detection
+let startX, startY;
+canvas.addEventListener('touchstart', e => {
+  const t = e.touches[0];
+  startX = t.clientX;
+  startY = t.clientY;
+});
+
+canvas.addEventListener('touchmove', e => {
+  if (changingDir) return;
+  const t = e.touches[0];
+  let dx = t.clientX - startX;
+  let dy = t.clientY - startY;
+  if (Math.abs(dx) > Math.abs(dy)) {
+    if (dx > 0 && dir !== 'LEFT') dir = 'RIGHT';
+    else if (dx < 0 && dir !== 'RIGHT') dir = 'LEFT';
+  } else {
+    if (dy > 0 && dir !== 'UP') dir = 'DOWN';
+    else if (dy < 0 && dir !== 'DOWN') dir = 'UP';
+  }
+  changingDir = true;
+});
+
+// Keyboard fallback
+window.addEventListener('keydown', e => {
+  if (changingDir) return;
+  if (e.key === 'ArrowLeft' && dir !== 'RIGHT') dir = 'LEFT';
+  if (e.key === 'ArrowUp' && dir !== 'DOWN') dir = 'UP';
+  if (e.key === 'ArrowRight' && dir !== 'LEFT') dir = 'RIGHT';
+  if (e.key === 'ArrowDown' && dir !== 'UP') dir = 'DOWN';
+  changingDir = true;
+});
+</script>
 </body>
 </html>
